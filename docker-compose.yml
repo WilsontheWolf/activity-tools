@@ -1,0 +1,15 @@
+version: "3.5"
+
+services:
+  george:
+    image: ghcr.io/wilsonthewolf/rpc-tools:latest
+    container_name: activity-server
+    volumes:
+      - ./data:/app/data
+    restart: on-failure:5
+    stop_grace_period: 10s
+    ports:
+      - 3000:3000
+    environment:
+      - MASTER=example # Keep this secret. This allows you to control the entire server.
+                       # Set to nothing to disable.

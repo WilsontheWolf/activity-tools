@@ -1,0 +1,56 @@
+:root {
+    background-color: #1c1b22;
+    color: #fbfbfe;
+}
+
+body {
+    max-width: 50em;
+    margin: 0 auto 2em;
+    padding: 0 1em;
+}
+
+a {
+    color: #8c8cff;
+}
+
+a:hover {
+    color: #ffadff;
+}
+
+table,
+td {
+    border: 1px solid #eee;
+}
+
+thead,
+tfoot {
+    background-color: #fff;
+    color: #333;
+}
+
+td {
+    padding: .5em;
+}
+
+.asset {
+    height: 128px;
+    width: 128px;
+}
+
+img.asset {
+    position: relative;
+}
+
+.asset .small {
+    z-index: 1;
+    height: 32px; /* 25% */
+    width: 32px;
+    left: 96px; /* 128 - 32 */
+    top: -37px;  /* tbh IDK */
+    /* Rounded */
+    border-radius: 50%;
+}
+
+.asset .large {
+    border-radius: 25%;
+}
