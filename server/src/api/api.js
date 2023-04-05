@@ -8,7 +8,8 @@ import APIActivity from "./APIActivity.js";
 const router = new Router();
 
 router.get('/devices', async (ctx, next) => {
-    ctx.body = Array.from(deviceStore.keys()).map(getDevice);
+    const full = ctx.query.full === 'true';
+    ctx.body = await Promise.all(Array.from(deviceStore.keys()).map((id) => getDevice(id, full)));
 });
 
 router.post('/devices', async (ctx, next) => {
@@ -32,7 +33,7 @@ router.post('/devices', async (ctx, next) => {
         name,
     });
 
-    ctx.body = getDevice(id);
+    ctx.body = await getDevice(id);
 });
 
 router.patch('/devices/:id', async (ctx, next) => {
@@ -53,7 +54,7 @@ router.patch('/devices/:id', async (ctx, next) => {
 
     const { name } = ctx.request.body;
 
-    const device = getDevice(id);
+    const device = await getDevice(id);
 
     if (name) device.name = name;
 
@@ -93,7 +94,10 @@ router.get('/devices/:id', async (ctx, next) => {
         ctx.body = 'Device not found';
         return;
     }
-    ctx.body = getDevice(id);
+
+    const full = ctx.query.full === 'true';
+
+    ctx.body = await getDevice(id, full);
 });
 
 router.delete('/devices/:id', async (ctx, next) => {
@@ -134,7 +138,7 @@ router.post('/devices/:id/heartbeat', async (ctx, next) => {
         return;
     }
 
-    const device = getDevice(id);
+    const device = await getDevice(id);
     const body = ctx.request.body;
 
     if (body.status) {
@@ -152,7 +156,7 @@ router.post('/devices/:id/heartbeat', async (ctx, next) => {
         if (data.activities) {
             let activities = data.full ? {} : Object.fromEntries(device.activities.map(a => [a.id, a]));
             device.activities = Object.entries(data.activities).forEach(([id, activity]) => {
-                if(!id) return;
+                if (!id) return;
                 if (activity === null) {
                     delete activities[id];
                 } else {
@@ -175,25 +179,6 @@ router.post('/devices/:id/heartbeat', async (ctx, next) => {
     ctx.body = device;
 });
 
-
-
-router.get('/debug/delete-all', async (ctx, next) => {
-    if (!isAllowed(ctx.auth, { type: 'Master' })) {
-        ctx.status = 403;
-        ctx.body = 'Forbidden';
-        return;
-    };
-
-    if (process.env.NODE_ENV !== 'development') {
-        ctx.status = 403;
-        ctx.body = 'Forbidden';
-        return;
-    }
-
-    deviceStore.clear();
-
-    ctx.status = 204;
-});
 // const streams = new Set();
 
 // router.get('/stream', async (ctx, next) => {
