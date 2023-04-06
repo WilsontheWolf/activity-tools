@@ -1,7 +1,7 @@
 version: "3.5"
 
 services:
-  george:
+  applicaiton-server:
     image: ghcr.io/wilsonthewolf/activity-server:latest
     container_name: activity-server
     volumes:
@@ -11,5 +11,5 @@ services:
     ports:
       - 3000:3000
     environment:
-      - MASTER=example # Keep this secret. This allows you to control the entire server.
+      - MASTER_KEY=example # Keep this secret. This allows you to control the entire server.
                        # Set to nothing to disable.
