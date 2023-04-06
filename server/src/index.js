@@ -10,20 +10,18 @@ const port = process.env.PORT || 3000;
 app
     .use(bodyParser())
     .use(authMiddleware)
+    .use(async (ctx, next) => { // CORS
+        ctx.set('Access-Control-Allow-Origin', '*');
+        ctx.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+        ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        if (ctx.method === 'OPTIONS') {
+            ctx.status = 204;
+            return;
+        }
+        await next();
+    })
     .use(router.routes())
     .use(router.allowedMethods())
-    // .use(async (ctx, next) => {
-    //     if (ctx.status === 404 && !ctx.body) {
-    //         await resolveStatic(ctx.request.url).then(({ data, mime }) => {
-    //             if (data) {
-    //                 ctx.body = data;
-    //                 ctx.type = mime;
-    //                 ctx.status = 200;
-    //             }
-    //         });
-    //     }
-    //     await next();
-    // })
     .listen(port);
 
 console.log(`Server running on port ${port}`);
