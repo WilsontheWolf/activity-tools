@@ -61,13 +61,12 @@ const makeIPC = () => {
     return new Promise((resolve, reject) => {
         const server = getServer();
         server.on('error', (err) => {
-            console.error(err);
             if (err.code === 'EADDRINUSE') {
                 id++;
-                resolve(listen(id));
+                resolve(listen());
             }
         });
-        return listen(id);
+        return resolve(listen());
     });
 };
 

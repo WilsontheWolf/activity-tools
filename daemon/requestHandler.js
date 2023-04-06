@@ -19,7 +19,12 @@ const handleOptions = (options = {}) => {
 const fetchGeneric = (url, options = {}) => {
     const res = fetch(new URL(url, config.server), handleOptions(options))
         .then(async (res) => {
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}: ${await res.text() || res.statusText}`);
+            if (!res.ok) return {
+                ok: false,
+                status: res.status,
+                response: `HTTP error! status: ${res.status}: ${await res.text() || res.statusText}`
+            }
+
             return {
                 ok: true,
                 status: res.status,
@@ -38,7 +43,6 @@ const fetchGeneric = (url, options = {}) => {
 
 
 const heartbeat = (data) => {
-    console.log(`Debug: POST /devices/@me/heartbeat with data: ${JSON.stringify(data)}`);
     return fetchGeneric(`/devices/@me/heartbeat`, {
         method: 'POST',
         body: data,

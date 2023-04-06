@@ -111,6 +111,10 @@ const startSending = () => {
                         sendInfo.changedData = null;
                     } else {
                         console.error(`Failed to send heartbeat: ${res.status} ${res.response}`);
+                        if(res.status === 401) {
+                            console.error('Looks like your token has been invalidated. Exiting...');
+                            process.exit(1);
+                        }
                     }
                 })
         }, 1000);
