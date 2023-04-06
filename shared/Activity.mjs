@@ -74,7 +74,6 @@ class Activity {
         try {
             return new Activity(data, id);
         } catch (e) {
-            console.log('DEBUG: Invalid activity', e)
             return null;
         }
     }
