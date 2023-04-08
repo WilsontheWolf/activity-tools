@@ -26,6 +26,23 @@ const displayIcons = {
     'error': 'error',
 };
 
+let hasDomLoaded = false;
+const deferSet = new Set();
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Loaded')
+    hasDomLoaded = true;
+    deferSet.forEach(fn => fn());
+    deferSet.clear();
+});
+
+const defer = (fn) => {
+    if (hasDomLoaded) fn();
+    else {
+        deferSet.add(fn);
+    }
+};
+
+
 const findLargestActivity = (activities) => {
     if (!activities || !activities.length) return null;
     return activities.reduce((best, curr) => {
@@ -49,14 +66,16 @@ class ActivityView extends HTMLElement {
 
             this.createElements();
 
-            this.loadSettings();
-
-            this.setDisplay('loading');
-
-            this.getInfo().catch(e => {
-                console.error('Error getting info', e);
-                this.setDisplay('error');
-            });
+            defer(() => {
+                this.setDisplay('loading');
+                
+                this.loadSettings();
+    
+                this.getInfo().catch(e => {
+                    console.error('Error getting info', e);
+                    this.setDisplay('error');
+                });
+            })
         } catch (e) {
             console.error('Uncaught Error in ActivityView', e);
             this.setDisplay('error');
@@ -391,6 +410,7 @@ class ActivityView extends HTMLElement {
     white-space: nowrap;
     overflow: clip;
     text-overflow: ellipsis;
+    color: #D9D9D9;
 }
 .big {
     background-color: #333;
@@ -398,6 +418,7 @@ class ActivityView extends HTMLElement {
     border-radius: 5px;
     display: inline-block;
     width: 20em; /* maybe 200px */
+    color: #D9D9D9;
 }
 .big .head {
     background-color: #555;
