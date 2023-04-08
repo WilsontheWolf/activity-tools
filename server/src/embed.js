@@ -1,6 +1,15 @@
 const statusRank = ['offline', 'idle', 'online'];
 const validRenderModes = ['debug', 'small', 'big'];
 
+let isSecure = null;
+if(document.currentScript?.src) {
+    try {
+        const url = new URL(document.currentScript.src);
+        if(url.protocol === 'https:') isSecure = true;
+        else if(url.protocol === 'http:') isSecure = false;
+    }
+    catch(e) {}
+}
 const displays = {
     'loading': 'Loading...',
     'no-data': 'No data',
@@ -56,7 +65,12 @@ class ActivityView extends HTMLElement {
 
     loadSettings() {
         this.deviceID = this.getAttribute("device-id");
-        this.baseURL = this.getAttribute("base-url") || "%base%";
+        let base = '%base%';
+        if(isSecure !== null) {
+            // This is a funky workaround for my reverse proxy setup
+            base = base.replace(/^https?:/, isSecure ? 'https:' : 'http:');
+        }
+        this.baseURL = this.getAttribute("base-url") || base;
         this.renderMode = this.getAttribute("render-mode") || 'big';
         if (!validRenderModes.includes(this.renderMode)) this.renderMode = 'big';
     }
