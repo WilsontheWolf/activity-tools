@@ -465,10 +465,12 @@ class ActivityView extends HTMLElement {
     width: 60px;
     margin-right: 0.5em;
     margin-left: 0.5em;
+    position: relative;
+    flex-shrink: 0;
 }
 
 img.asset {
-    position: relative;
+    position: absolute;
     margin: 0;
 }
 
@@ -476,15 +478,15 @@ img.asset {
     z-index: 1;
     height: 24px;
     width: 24px;
-    bottom: 84px; /* large height + small height */
-    left: 41px; /* large width - small width + 5 */
+    bottom: -5px; 
+    right: -5px;
     /* Rounded */
     border-radius: 50%;
 }
 
 .asset .large {
     border-radius: 25%;
-    bottom: 60px; /* Height */
+    bottom: 0;
 }
 .icon {
     width: 1em;
