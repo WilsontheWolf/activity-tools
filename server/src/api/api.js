@@ -2,6 +2,8 @@ import Router from "@koa/router";
 import { deviceStore, getDevice } from "./mem.js";
 import { clearTokens, isAllowed, newDevice, newToken } from "./auth.js";
 import { isStatus } from "../../../shared/status.mjs";
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import APIActivity from "./APIActivity.js";
 // import { PassThrough } from 'node:stream';
 
@@ -177,6 +179,27 @@ router.post('/devices/:id/heartbeat', async (ctx, next) => {
     deviceStore.set(id, device);
 
     ctx.body = device;
+});
+
+let embedScript = null;
+router.get('/embed/script.js', async (ctx, next) => {
+    if (!embedScript || process.env.NODE_ENV === 'development') {
+        const baseDir = import.meta.url.startsWith('file://') ? path.dirname(import.meta.url.slice(7)) : process.cwd();
+        embedScript = await readFile(path.join(baseDir, '../embed.js'), 'utf8')
+            .catch(err => {
+                console.error(err);
+                return null;
+            });
+        if (!embedScript) {
+            ctx.status = 500;
+            ctx.body = 'Internal Server Error';
+            return;
+        }
+    }
+
+    ctx.set('Content-Type', 'application/javascript');
+    ctx.body = embedScript
+        .replaceAll('%base%', ctx.origin);
 });
 
 // const streams = new Set();
