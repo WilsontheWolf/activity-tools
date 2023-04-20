@@ -1,0 +1,11 @@
+[Unit]
+Description=Activity Tracker
+After=network.target
+
+[Service]
+ExecStart=#START#
+Environment="SERVER=#SERVER#"
+Environment="TOKEN=#TOKEN#"
+
+[Install]
+WantedBy=default.target
