@@ -1,6 +1,8 @@
 import Activity from "../shared/Activity.mjs";
 import ClientHandler from "./ClientHandler.js";
 import { getServer, makeIPC } from "./IPC.js";
+import ProxyHandler from "./ProxyHandler.js";
+import getConfig from "./config.js";
 import { newActivity, removeActivity, startSending } from "./dataHandler.js";
 import { fetchMe } from "./requestHandler.js";
 import { setTimeout } from "node:timers/promises";
@@ -15,7 +17,14 @@ if (!path || path !== '0') {
 
 const server = getServer();
 
+const config = getConfig();
+
 const activityCache = new Map();
+
+const newHandler = (socket) => {
+    if(config.passthrough) return new ProxyHandler(socket, config.passthrough);
+    return new ClientHandler(socket);
+};
 
 const broadcastActivity = (id, activity) => {
     if (activity)
@@ -41,7 +50,7 @@ const updateActivity = (client, data) => {
 
 server.on("connection", (socket) => {
     console.log("socket connected");
-    const handler = new ClientHandler(socket);
+    const handler = newHandler(socket);
 
     handler.on('ready', () => {
         if (!handler.clientID || activityCache.has(handler.clientID)) {
@@ -87,5 +96,3 @@ if (!me?.ok) {
 console.log(`Logged in as ${me.response.name} (${me.response.id})`)
 console.log('Starting activity broadcast...')
 startSending();
-
-export default activityCache;

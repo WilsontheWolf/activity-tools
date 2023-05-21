@@ -5,6 +5,7 @@ import { hostname } from 'node:os'
  * @property {URL} server
  * @property {string} token
  * @property {boolean} noFancySessions
+ * @property {string} [passthrough]
  */
 
 const defaultConfig = {
@@ -31,7 +32,8 @@ const _loadConfig = () => {
     }
     if (process.env.TOKEN) config.token = process.env.TOKEN;
     if (process.env.NO_FANCY_SESSIONS) config.noFancySessions = true;
-    if(!config.token) {
+    if (process.env.PASSTHROUGH) config.passthrough = process.env.PASSTHROUGH;
+    if (!config.token) {
         console.error('Required environment variable TOKEN is not set');
         process.exit(1);
     }
