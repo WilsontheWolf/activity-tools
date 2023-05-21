@@ -1,14 +1,72 @@
 const statusRank = ['offline', 'idle', 'online'];
 const validRenderModes = ['debug', 'small', 'big'];
+const validDataMethods = ['once', 'poll', 'stream'];
+
+class DataHandler {
+    constructor() {
+        this.handlers = new Map();
+    }
+
+    addHandler(host, fn, method = 'poll') {
+        if (!validDataMethods.includes(method)) throw new Error('Invalid data method');
+        let info = this.handlers.get(host) || {
+            calls: new Set()
+        };
+        let methodIndex = validDataMethods.indexOf(method);
+        let infoMethodIndex = validDataMethods.indexOf(info.method) || -1;
+        info.calls.add(fn);
+        if (infoMethodIndex >= methodIndex) return;
+        if(info.interval) clearInterval(info.interval);
+        info.method = method;
+        this.handlers.set(host, info);
+    }
+
+    alert(host, data) {
+        let info = this.handlers.get(host);
+        if(!info) return;
+        info.calls.forEach(fn => fn(data));        
+    }
+
+    async fetch(host) {
+        let data = await this.fetch(new URL('/devices?full=true', host))
+        .then(res => {
+            if(!res.ok) throw new Error('Server returned ' + res.status);
+            return res.json();
+        })
+        .catch(e => {
+            console.error('Error fetching data', e);
+            return null;
+        });
+        if(!data) return null;
+        let info = this.handlers.get(host);
+        if(!info) return null;
+        info.data = data;
+        return data;
+    }
+
+    handleOnce(host) {
+        return this.fetch(host);
+    }
+
+    handlePoll(host) {
+        let int = setInterval(() => this.fetch(host), 1000);
+        let info = this.handlers.get(host);
+        info.interval = int;
+        return this.fetch(host);
+    }
+
+    handleStream(host) {
+    }
+}
 
 let isSecure = null;
-if(document.currentScript?.src) {
+if (document.currentScript?.src) {
     try {
         const url = new URL(document.currentScript.src);
-        if(url.protocol === 'https:') isSecure = true;
-        else if(url.protocol === 'http:') isSecure = false;
+        if (url.protocol === 'https:') isSecure = true;
+        else if (url.protocol === 'http:') isSecure = false;
     }
-    catch(e) {}
+    catch (e) { }
 }
 const displays = {
     'loading': 'Loading...',
@@ -67,10 +125,10 @@ class ActivityView extends HTMLElement {
             this.createElements();
 
             defer(() => {
-                this.setDisplay('loading');
-                
                 this.loadSettings();
-    
+                
+                this.setDisplay('loading');
+
                 this.getInfo().catch(e => {
                     console.error('Error getting info', e);
                     this.setDisplay('error');
@@ -85,7 +143,7 @@ class ActivityView extends HTMLElement {
     loadSettings() {
         this.deviceID = this.getAttribute("device-id");
         let base = '%base%';
-        if(isSecure !== null) {
+        if (isSecure !== null) {
             // This is a funky workaround for my reverse proxy setup
             base = base.replace(/^https?:/, isSecure ? 'https:' : 'http:');
         }
