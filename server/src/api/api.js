@@ -5,9 +5,20 @@ import { isStatus } from "../../../shared/status.mjs";
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import APIActivity from "./APIActivity.js";
-// import { PassThrough } from 'node:stream';
+import { PassThrough } from 'node:stream';
 
 const router = new Router();
+const streams = new Set();
+
+const broadcast = async (device) => {
+    const streamers = Array.from(streams);
+    const full = streamers.some(s => s.full);
+
+    const data = await getDevice(device, full);
+
+    streamers.forEach(s => s.write(`data: ${JSON.stringify(data)}\n\n`));
+};
+
 
 router.get('/devices', async (ctx, next) => {
     const full = ctx.query.full === 'true';
@@ -35,7 +46,36 @@ router.post('/devices', async (ctx, next) => {
         name,
     });
 
+    broadcast(id);
+
     ctx.body = await getDevice(id);
+});
+
+router.get('/devices/stream', async (ctx, next) => {
+    ctx.request.socket.setTimeout(0);
+    ctx.req.socket.setNoDelay(true);
+    ctx.req.socket.setKeepAlive(true);
+    ctx.set({
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+    });
+
+    const stream = new PassThrough();
+
+    stream.full = ctx.query.full === 'true';
+
+    streams.add(stream);
+
+    stream.on("close", () => {
+        streams.delete(stream);
+    });
+
+    ctx.status = 200;
+    ctx.body = stream;
+
+    stream.write(': ok\n\n');
+
 });
 
 router.patch('/devices/:id', async (ctx, next) => {
@@ -61,6 +101,8 @@ router.patch('/devices/:id', async (ctx, next) => {
     if (name) device.name = name;
 
     deviceStore.set(id, device);
+
+    broadcast(id);
 
     ctx.body = device;
 });
@@ -178,6 +220,8 @@ router.post('/devices/:id/heartbeat', async (ctx, next) => {
 
     deviceStore.set(id, device);
 
+    broadcast(id);
+
     ctx.body = device;
 });
 
@@ -202,30 +246,8 @@ router.get('/embed/script.js', async (ctx, next) => {
         .replaceAll('%base%', ctx.origin);
 });
 
-// const streams = new Set();
 
-// router.get('/stream', async (ctx, next) => {
-//     ctx.request.socket.setTimeout(0);
-//     ctx.req.socket.setNoDelay(true);
-//     ctx.req.socket.setKeepAlive(true);
-//     ctx.set({
-//         "Content-Type": "text/event-stream",
-//         "Cache-Control": "no-cache",
-//         "Connection": "keep-alive",
-//     });
 
-//     const stream = new PassThrough();
-
-//     const id = ctx.request.socket.remoteAddress + ':' + Date.now();
-//     streams.add(stream);
-//     ctx.status = 200;
-//     ctx.body = stream;
-
-//     stream.on("close", () => {
-//         streams.delete(id);
-//     });
-//     stream.write(': ok\n\n');
-// });
 
 // activityCache.onUpdate = (id, activity) => {
 //     streams.forEach((stream) => {
@@ -235,11 +257,11 @@ router.get('/embed/script.js', async (ctx, next) => {
 //     });
 // };
 
-// setInterval(() => {
-//     streams.forEach((stream) => {
-//         stream.write(': ping\n\n');
-//     });
-// }, 1000 * 10);
+setInterval(() => {
+    streams.forEach((stream) => {
+        stream.write(': ping\n\n');
+    });
+}, 1000 * 10);
 
 
 export default router;

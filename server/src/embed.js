@@ -7,7 +7,7 @@ class DataHandler {
         this.handlers = new Map();
     }
 
-    addHandler(host, fn, method = 'poll') {
+    addHandler(host, fn, method = 'stream') {
         if (!validDataMethods.includes(method)) throw new Error('Invalid data method');
         let info = this.handlers.get(host) || {
             calls: new Set()
@@ -15,32 +15,54 @@ class DataHandler {
         let methodIndex = validDataMethods.indexOf(method);
         let infoMethodIndex = validDataMethods.indexOf(info.method) || -1;
         info.calls.add(fn);
+        if (info.data) fn(info.data);
         if (infoMethodIndex >= methodIndex) return;
-        if(info.interval) clearInterval(info.interval);
+        if (info.interval) clearInterval(info.interval);
         info.method = method;
         this.handlers.set(host, info);
+        switch (method) {
+            case 'once': {
+                this.handleOnce(host);
+                break;
+            }
+
+            case 'poll': {
+                this.handlePoll(host);
+                break;
+            }
+
+            case 'stream': {
+                this.handleStream(host);
+                break;
+            }
+
+            default: {
+                throw new Error('Invalid data method');
+            }
+        }
     }
 
     alert(host, data) {
         let info = this.handlers.get(host);
-        if(!info) return;
-        info.calls.forEach(fn => fn(data));        
+        if (!info) return;
+        info.calls.forEach(fn => fn(data));
     }
 
     async fetch(host) {
-        let data = await this.fetch(new URL('/devices?full=true', host))
-        .then(res => {
-            if(!res.ok) throw new Error('Server returned ' + res.status);
-            return res.json();
-        })
-        .catch(e => {
-            console.error('Error fetching data', e);
-            return null;
-        });
-        if(!data) return null;
+        let data = await fetch(new URL('/devices?full=true', host))
+            .then(async res => {
+                if (!res.ok) throw new Error('Server returned ' + res.status);
+                return { ok: true, data: await res.json() };
+            })
+            .catch(e => {
+                console.error('Error fetching data', e);
+                return { ok: false, error: e };
+            });
+        if (!data) return null;
         let info = this.handlers.get(host);
-        if(!info) return null;
+        if (!info) return null;
         info.data = data;
+        this.alert(host, data);
         return data;
     }
 
@@ -49,15 +71,44 @@ class DataHandler {
     }
 
     handlePoll(host) {
-        let int = setInterval(() => this.fetch(host), 1000);
+        let int = setInterval(() => this.fetch(host), 20000);
         let info = this.handlers.get(host);
         info.interval = int;
         return this.fetch(host);
     }
 
-    handleStream(host) {
+    handleStream(host, retryDelay = 1000) {
+        let es = new EventSource(new URL('/devices/stream?full=true', host));
+        es.addEventListener('open', e => {
+            retryDelay = 1000;
+        });
+        es.addEventListener('message', e => {
+            console.log(e);
+            const info = this.handlers.get(host);
+            if (!info?.data) return;
+            if (!info.data.ok) info.data = { ok: true, data: [] };
+            let data = JSON.parse(e.data);
+            if (!data.id) return;
+            let index = info.data.data.findIndex(d => d.id === data.id);
+            if (index === -1) info.data.data.push(data);
+            else info.data.data[index] = data;
+            this.alert(host, info.data);
+        });
+        es.addEventListener('error', e => {
+            console.error('Error in EventSource', e);
+            es.close();
+            setTimeout(() => {
+                this.handleStream(host, retryDelay * 2);
+            }, retryDelay);
+        });
+
+        let info = this.handlers.get(host);
+        info.eventSource = es;
+        return this.fetch(host);
     }
 }
+
+const globalHandler = new DataHandler();
 
 let isSecure = null;
 if (document.currentScript?.src) {
@@ -126,13 +177,16 @@ class ActivityView extends HTMLElement {
 
             defer(() => {
                 this.loadSettings();
-                
+
                 this.setDisplay('loading');
 
-                this.getInfo().catch(e => {
-                    console.error('Error getting info', e);
-                    this.setDisplay('error');
+                globalHandler.addHandler(this.baseURL, data => {
+                    this.handleInfo(data);
                 });
+                // this.getInfo().catch(e => {
+                //     console.error('Error getting info', e);
+                //     this.setDisplay('error');
+                // });
             })
         } catch (e) {
             console.error('Uncaught Error in ActivityView', e);
@@ -417,6 +471,33 @@ class ActivityView extends HTMLElement {
         if (!toShow) return this.setDisplay('no-device');
         this.dev = toShow;
         this.render();
+    }
+
+    handleInfo(rawData) {
+        if (!rawData.ok) {
+            this.setDisplay('error');
+            return;
+        }
+
+        let data;
+        if (this.deviceID) {
+            data = rawData.data?.find(d => d.id === this.deviceID);
+            if (!data) {
+                console.error('Device not found');
+                this.setDisplay('error');
+                return;
+            }
+        } else {
+            data = rawData.data;
+        }
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            this.setDisplay('no-data');
+            return;
+        }
+
+        this.storeInfo(data);
+        this.figureOutWhatToDisplay();
+
     }
 
     async getInfo() {
