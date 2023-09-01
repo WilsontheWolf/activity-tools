@@ -190,6 +190,12 @@ class ActivityView extends HTMLElement {
             // Create a shadow root
             this.attachShadow({ mode: "open" }); // sets and returns 'this.shadowRoot'
 
+            this.colors = {
+                bgDark: '#333',
+                bgLight: '#555',
+                border: '#000',
+                text: '#D9D9D9',
+            }
             this.createElements();
 
             defer(() => {
@@ -221,6 +227,24 @@ class ActivityView extends HTMLElement {
         this.baseURL = this.getAttribute("base-url") || base;
         this.renderMode = this.getAttribute("render-mode") || 'big';
         if (!validRenderModes.includes(this.renderMode)) this.renderMode = 'big';
+        let colorsModified = false;
+        if (this.getAttribute("bg-dark-color")) {
+            this.colors.bgDark = this.getAttribute("bg-dark-color");
+            colorsModified = true;
+        }
+        if (this.getAttribute("bg-light-color")) {
+            this.colors.bgLight = this.getAttribute("bg-light-color");
+            colorsModified = true;
+        }
+        if (this.getAttribute("border-color")) {
+            this.colors.border = this.getAttribute("border-color");
+            colorsModified = true;
+        }
+        if (this.getAttribute("text-color")) {
+            this.colors.text = this.getAttribute("text-color");
+            colorsModified = true;
+        }
+        if (colorsModified) this.genStylesheet();
     }
 
     renderSmall() {
@@ -377,7 +401,7 @@ class ActivityView extends HTMLElement {
             body.insertBefore(div, content);
         }
 
-        if(activity.timestamps) {
+        if (activity.timestamps) {
             head.appendChild(this.timeElement(activity.timestamps));
         }
     }
@@ -577,19 +601,18 @@ class ActivityView extends HTMLElement {
         return span;
     }
 
-    createElements() {
-        // Create (nested) span elements
-        const wrapper = this.wrapper = document.createElement("div");
-        wrapper.setAttribute("class", "wrapper");
+    genStylesheet() {
+        if (!this.styling) {
+            this.styling = document.createElement('style');
+            this.shadowRoot.append(this.styling);
+        }
 
-        // Create some CSS to apply to the shadow DOM
-        const style = this.styling = document.createElement("style");
-        style.textContent = `.wrapper {
+        this.styling.textContent = `.wrapper {
 }
 
 .small {
-    background-color: #555;
-    border: 1px solid #000;
+    background-color: ${this.colors.bgLight};
+    border: 1px solid ${this.colors.border};
     border-radius: 5px;
     min-width: 5em;
     padding: 5px;
@@ -598,18 +621,18 @@ class ActivityView extends HTMLElement {
     white-space: nowrap;
     overflow: clip;
     text-overflow: ellipsis;
-    color: #D9D9D9;
+    color: ${this.colors.text};
 }
 .big {
-    background-color: #333;
-    border: 1px solid #000;
+    background-color: ${this.colors.bgDark};
+    border: 1px solid ${this.colors.border};
     border-radius: 5px;
     display: inline-block;
     width: 20em; /* maybe 200px */
-    color: #D9D9D9;
+    color: ${this.colors.text};
 }
 .big .head {
-    background-color: #555;
+    background-color: ${this.colors.bgLight};
     padding: 5px;
     border-radius: 5px 5px 0 0;
     white-space: nowrap;
@@ -684,6 +707,16 @@ img.asset {
     vertical-align: sub;
 }`;
 
+return this.styling;
+    }
+
+
+    createElements() {
+        // Create (nested) span elements
+        const wrapper = this.wrapper = document.createElement("div");
+        wrapper.setAttribute("class", "wrapper");
+
+        this.genStylesheet();
         const parser = new DOMParser();
         const icons = parser.parseFromString(`<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
     <symbol id="activity" viewBox="0 0 17 17">
@@ -712,7 +745,7 @@ img.asset {
 </svg>`, 'text/html')?.querySelector('svg');
 
         // attach the created elements to the shadow DOM
-        this.shadowRoot.append(icons, style, wrapper);
+        this.shadowRoot.append(icons, wrapper);
     }
 }
 
