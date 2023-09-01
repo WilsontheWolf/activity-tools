@@ -164,6 +164,23 @@ const findLargestActivity = (activities) => {
     }, null);
 };
 
+const handleDuration = (duration) => {
+    const hours = Math.floor(duration / 3600);
+    const minutes = Math.floor((duration % 3600) / 60);
+    const seconds = Math.floor(duration % 60);
+    const parts = [];
+    if (hours) parts.push(hours);
+    parts.push(minutes.toString().padStart(2, '0'));
+    parts.push(seconds.toString().padStart(2, '0'));
+    return parts.join(':');
+};
+
+const calcDuration = (time, type) => {
+    if (!time) return null;
+    const now = Date.now();
+    if (type === 'start') return Math.max(Math.floor((now - time) / 1000), 0);
+    if (type === 'end') return Math.max(Math.floor((time - now) / 1000), 0);
+}
 
 class ActivityView extends HTMLElement {
     constructor() {
@@ -218,8 +235,7 @@ class ActivityView extends HTMLElement {
         if (!dev) {
             rendered.innerText = '';
             if (this.infoDisplay) {
-                rendered.appendChild(this.makeIcon(displayIcons[this.infoDisplay]));
-                rendered.appendChild(document.createTextNode(' ' + displays[this.infoDisplay]));
+                rendered.appendChild(this.makeIcon(displayIcons[this.infoDisplay], displays[this.infoDisplay]));
             }
             return;
         }
@@ -229,7 +245,11 @@ class ActivityView extends HTMLElement {
         rendered.innerText = '';
 
         let text = '';
-        if (dev.status) rendered.appendChild(this.makeIcon(dev.status));
+        let icon;
+        if (dev.status) {
+            icon = this.makeIcon(dev.status);
+            rendered.appendChild(icon);
+        }
         if (!activity) {
             if (dev.name) text = dev.name;
             else
@@ -242,7 +262,10 @@ class ActivityView extends HTMLElement {
             else if (state) text = state;
             else text = dev.status;
         }
-        if (text) rendered.appendChild(document.createTextNode(' ' + text));
+        if (text) {
+            if (icon) icon.appendChild(document.createTextNode(' ' + text));
+            else rendered.appendChild(document.createTextNode(' ' + text));
+        }
 
     }
 
@@ -278,8 +301,7 @@ class ActivityView extends HTMLElement {
             content.innerText = '';
             head.innerText = '';
             if (this.infoDisplay) {
-                head.appendChild(this.makeIcon(displayIcons[this.infoDisplay]));
-                head.appendChild(document.createTextNode(' Activity'));
+                head.appendChild(this.makeIcon(displayIcons[this.infoDisplay], 'Activity'));
                 content.innerText = displays[this.infoDisplay];
             }
             return;
@@ -288,8 +310,7 @@ class ActivityView extends HTMLElement {
         head.innerText = '';
         content.innerText = '';
 
-        head.appendChild(this.makeIcon(dev.status));
-        head.appendChild(document.createTextNode(' ' + dev.name));
+        head.appendChild(this.makeIcon(dev.status, dev.name));
 
         const activity = findLargestActivity(dev.activities)?.[0];
         if (!activity) {
@@ -298,7 +319,7 @@ class ActivityView extends HTMLElement {
         }
 
         const name = dev.extras?.[activity.id]?.name;
-        const { state, details } = activity;
+        const { state, details, timestamps } = activity;
 
         const lines = [
             details,
@@ -312,7 +333,6 @@ class ActivityView extends HTMLElement {
             lines.unshift(p);
         }
         // Note for future: part size goes on the same line as state
-        // Note for future: timestamps have pritoity end > start > none
 
         for (const line of lines) {
             if (!line) continue;
@@ -356,8 +376,34 @@ class ActivityView extends HTMLElement {
 
             body.insertBefore(div, content);
         }
+
+        if(activity.timestamps) {
+            head.appendChild(this.timeElement(activity.timestamps));
+        }
     }
 
+    timeElement(timeObj) {
+        let suffix, time, type;
+        if (timeObj.end) {
+            suffix = 'Remaining';
+            time = timeObj.end;
+            type = 'end';
+        }
+        else if (timeObj.start) {
+            suffix = 'Elapsed';
+            time = timeObj.start;
+            type = 'start';
+        }
+        else return null;
+        const span = document.createElement('span');
+        span.innerText = `${handleDuration(calcDuration(time, type))} ${suffix}`;
+        const interval = setInterval(() => {
+            if (!this.dev) return clearInterval(interval);
+            if (!span.parentElement) return clearInterval(interval);
+            span.innerText = `${handleDuration(calcDuration(time, type))} ${suffix}`;
+        }, 1000);
+        return span;
+    }
 
     renderDebug() {
         let rendered = this.rendered;
@@ -385,10 +431,11 @@ class ActivityView extends HTMLElement {
             lines.push('No activity');
         } else {
             const name = dev.extras?.[activity.id]?.name;
-            const { state, details } = activity;
+            const { state, details, timestamps } = activity;
             if (name) lines.push(name);
             if (state) lines.push(state);
             if (details) lines.push(details);
+            if (timestamps) lines.push(this.timeElement(timestamps));
         }
 
         rendered.innerText = '';
@@ -522,9 +569,11 @@ class ActivityView extends HTMLElement {
         this.figureOutWhatToDisplay();
     }
 
-    makeIcon(icon) {
+    makeIcon(icon, text) {
         const span = document.createElement('span');
         span.innerHTML = `<svg class="icon"><use xlink:href="#${icon}"/></svg>`;
+        if (text)
+            span.appendChild(document.createTextNode(' ' + text));
         return span;
     }
 
@@ -566,6 +615,8 @@ class ActivityView extends HTMLElement {
     white-space: nowrap;
     overflow: clip;
     text-overflow: ellipsis;
+    display: flex;
+    justify-content: space-between;
 }
 
 .big .body > img {
