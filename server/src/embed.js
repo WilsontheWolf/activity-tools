@@ -177,9 +177,11 @@ const handleDuration = (duration) => {
 
 const calcDuration = (time, type) => {
     if (!time) return null;
-    const now = Date.now();
-    if (type === 'start') return Math.max(Math.floor((now - time) / 1000), 0);
-    if (type === 'end') return Math.max(Math.floor((time - now) / 1000), 0);
+    // Apparently this can be a UNIX timestamp or a JS timestamp
+    if(`${time}`.length > 10) time = Math.floor(time / 1000);
+    const now = Math.floor(Date.now() / 1000);
+    if (type === 'start') return Math.max(now - time, 0);
+    if (type === 'end') return Math.max(time - now, 0);
 }
 
 class ActivityView extends HTMLElement {

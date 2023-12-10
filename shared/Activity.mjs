@@ -35,8 +35,8 @@ class Activity {
         if (!['object', 'undefined'].includes(typeof this.party)) throw new TypeError('Activity party must be an object');
         if (!['string', 'undefined'].includes(typeof this.party?.id)) throw new TypeError('Activity party id must be a string');
         if (!['undefined'].includes(typeof this.party?.size) && (!Array.isArray(this.party?.size) || this.party?.size !== 2)) throw new TypeError('Activity party must be an array of length 2');
-        if (!['number', 'undefined'].includes(typeof this.party?.size[0])) throw new TypeError('Activity party size[0] must be a number');
-        if (!['number', 'undefined'].includes(typeof this.party?.size[1])) throw new TypeError('Activity party size[1] must be a number');
+        if (!['number', 'undefined'].includes(typeof this.party?.size?.[0])) throw new TypeError('Activity party size[0] must be a number');
+        if (!['number', 'undefined'].includes(typeof this.party?.size?.[1])) throw new TypeError('Activity party size[1] must be a number');
         if (!['boolean', 'undefined'].includes(typeof this.instance)) throw new TypeError('Activity instance must be a boolean');
         if (!['undefined'].includes(typeof this.buttons) && !Array.isArray(this.buttons)) throw new TypeError('Activity buttons must be an array');
         if (this.buttons?.some(b => b?.label === undefined || b?.url === undefined)) throw new TypeError('Activity buttons must have a label and a url');

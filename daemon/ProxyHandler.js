@@ -135,7 +135,7 @@ class ProxyHandler extends EventEmitter {
             clearInterval(this.#interval);
             this.emit('close');
         }
-        if(this.#clientUp) {
+        if (this.#clientUp) {
             this.#client.destroy();
             this.#clientUp = false;
         }

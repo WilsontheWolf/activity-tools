@@ -22,7 +22,7 @@ const config = getConfig();
 const activityCache = new Map();
 
 const newHandler = (socket) => {
-    if(config.passthrough) return new ProxyHandler(socket, config.passthrough);
+    if (config.passthrough) return new ProxyHandler(socket, config.passthrough);
     return new ClientHandler(socket);
 };
 
@@ -68,6 +68,20 @@ server.on("connection", (socket) => {
     handler.on("message", (data) => {
         if (data.cmd === 'SET_ACTIVITY') {
             updateActivity(handler, data.args);
+        }
+        if (config.passthrough) return;
+        // Some clients (cough cough DiscordGameSDK) don't send activity data
+        // unless i tell them I'm inform them of different events. 
+        // This is a workaround for that.
+        if (data.cmd === 'SUBSCRIBE') {
+            const nonce = data.nonce;
+            const evt = data.evt;
+            handler.send({
+                cmd: 'SUBSCRIBE',
+                data: { evt },
+                evt: null,
+                nonce,
+            });
         }
     });
 

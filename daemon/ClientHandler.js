@@ -7,6 +7,17 @@ const defaultDispatch = {
         cdn_host: 'cdn.discordapp.com',
         api_endpoint: '//discord.com/api',
         environment: 'production'
+    },
+    user: {
+        id: '0',
+        username: 'anon',
+        discriminator: '0',
+        global_name: 'Anon',
+        avatar: null,
+        avatar_decoration_data: null,
+        bot: false,
+        flags: 0,
+        premium_type: 0,
     }
 }
 
